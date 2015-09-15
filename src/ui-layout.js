@@ -11,6 +11,7 @@ angular.module('ui.layout', [])
     //var cache = {};
     var animationFrameRequested;
     var lastPos;
+    var cache = {};
 
     // regex to verify size is properly set to pixels or percent
     var sizePattern = /\d+\s*(px|%)\s*$/i;
@@ -96,7 +97,7 @@ angular.module('ui.layout', [])
 
             // move the splitbar
             ctrl.movingSplitbar[position] = newPosition;
-
+            
             // broadcast an event that resize happened (debounced to 50ms)
             if(debounceEvent) $timeout.cancel(debounceEvent);
             debounceEvent = $timeout(function() {
@@ -134,6 +135,16 @@ angular.module('ui.layout', [])
         return null;
       }
     }
+    
+    function updateCache() {
+      cache.containerSize = $element[0][ctrl.sizeProperties.offsetSize];
+      cache.bounds = ctrl.bounds;
+      cache.containers = [];
+      for(var i=0; i < ctrl.containers.length; i++) {
+           
+           cache.containers[i] = { size: ctrl.containers[i].size, position: ctrl.containers[i].position }
+      }
+    }
 
     //================================================================================
     // Public Controller Functions
@@ -164,6 +175,8 @@ angular.module('ui.layout', [])
 
       //Animate the page outside the event
       animationFrameRequested = window.requestAnimationFrame(draw);
+      
+      updateCache();
     };
 
     /**
@@ -232,7 +245,6 @@ angular.module('ui.layout', [])
       var originalSize = availableSize;
       var usedSpace = 0;
       var numOfAutoContainers = 0;
-
       if(ctrl.containers.length > 0 && $element.children().length > 0) {
 
         // calculate sizing for ctrl.containers
@@ -290,6 +302,7 @@ angular.module('ui.layout', [])
 
         // set the sizing for the ctrl.containers
         var autoSize = Math.floor(availableSize / numOfAutoContainers);
+        var cachePercentUsed = 0;
         for(i=0; i < ctrl.containers.length; i++) {
           c = ctrl.containers[i];
           c[ctrl.sizeProperties.flowProperty] = usedSpace;
@@ -299,17 +312,24 @@ angular.module('ui.layout', [])
           c.collapsed = c.collapsed || opts.collapsed[i];
 
           //TODO: adjust size if autosize is greater than the maxSize
-
+          
           if(!LayoutContainer.isSplitbar(c)) {
             var newSize = (opts.sizes[i] === 'auto') ? autoSize : opts.sizes[i];
-
-            c.size = (newSize !== null) ? newSize : autoSize;
+            if(cache && cache.containers && cache.containers[i]) {
+              cachePercentUsed += Math.round(cache.containers[i].size / cache.containerSize*100);
+              c.size = Math.round(cache.containers[i].size / (cache.containerSize - dividerSize) * availableSize);
+            } else if(newSize !== null) {
+              c.size = newSize;
+            } else {
+              c.size = autoSize;
+            }
           } else {
             c.size = dividerSize;
           }
 
           usedSpace += c.size;
         }
+        console.log(cachePercentUsed);
       }
     };
 

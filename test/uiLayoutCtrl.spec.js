@@ -36,5 +36,7 @@ describe('Controller: uiLayoutCtrl', function () {
       expect(uic.isLayoutElement(tagContainer)).toEqual(true);
       expect(uic.isLayoutElement(notUiEl)).toEqual(false);
     });
+    
+    
   });
 });
